@@ -17,7 +17,7 @@ class QueueService:
         # Queue URLs from settings
         self.task_queue_url = settings.TASK_QUEUE_URL
         self.status_update_queue_url = settings.STATUS_UPDATE_QUEUE_URL
-        self.s3_event_queue_url = "https://sqs.us-east-2.amazonaws.com/635071011057/2024-09-23-audiotranscribe-my-application-queue"
+        self.s3_event_queue_url = settings.S3_EVENT_QUEUE_URL
 
     def send_task_to_queue(self, task_id: str, object_key: str) -> bool:
         """

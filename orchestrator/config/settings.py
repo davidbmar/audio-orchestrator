@@ -50,6 +50,7 @@ class Settings:
             self.API_TOKEN = secrets['api_token']
             self.TASK_QUEUE_URL = secrets['task_queue_url']
             self.STATUS_UPDATE_QUEUE_URL = secrets['status_update_queue_url']
+            self.S3_EVENT_QUEUE_URL = secrets['s3_event_queue_url']
             self.DB_HOST = secrets['db_host']
             self.DB_NAME = secrets['db_name']
             self.DB_USER = secrets['db_username']
@@ -161,7 +162,7 @@ class Settings:
         try:
             required_attrs = [
                 'API_TOKEN', 'TASK_QUEUE_URL', 'STATUS_UPDATE_QUEUE_URL',
-                'DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD',
+                'S3_EVENT_QUEUE_URL', 'DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD',
                 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'REGION_NAME',
                 'POLL_INTERVAL', 'PRESIGNED_URL_EXPIRATION'
             ]
