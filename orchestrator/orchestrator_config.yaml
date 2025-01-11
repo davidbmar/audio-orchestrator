@@ -1,0 +1,6 @@
+aws:
+  region: 'us-east-2'
+
+performance:
+  poll_interval: 5  # Seconds between checking for new tasks
+  presigned_url_expiration: 3600  # Seconds until presigned URLs expire
