@@ -203,14 +203,26 @@ class DatabaseOperations:
 
     def update_task_worker(self, task_id: str, worker_id: str) -> None:
         """Assign a worker to a task."""
-        query = """
-            UPDATE tasks 
-            SET worker_id = %s,
-                updated_at = NOW()
-            WHERE task_id = %s
-        """
-        self.execute(query, (worker_id, task_id))
-        logger.info(f"Assigned worker {worker_id} to task {task_id}")
+        try:
+            query = """
+                WITH task_update AS (
+                    UPDATE tasks 
+                    SET assigned_worker_id = %s,
+                        updated_at = NOW()
+                    WHERE task_id = %s
+                    RETURNING task_id
+                )
+                UPDATE worker_status 
+                SET current_task_id = %s,
+                    status = 'Active',
+                    last_heartbeat = NOW()
+                WHERE worker_id = %s
+            """
+            self.execute(query, (worker_id, task_id, task_id, worker_id))
+            logger.info(f"Assigned worker {worker_id} to task {task_id}")
+        except Exception as e:
+            logger.error(f"Error assigning worker {worker_id} to task {task_id}: {e}")
+            raise
 
     def get_task_by_id(self, task_id: str) -> Optional[Task]:
         """Get a task by its ID."""

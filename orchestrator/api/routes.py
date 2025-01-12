@@ -82,8 +82,11 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
     def get_task() -> tuple:
         """Get a task for processing."""
         try:
-            # Get worker ID from header or generate one
-            worker_id = request.headers.get('X-Worker-ID', 'unknown-worker')
+            # Get worker ID from header - REQUIRED
+            worker_id = request.headers.get('X-Worker-ID')
+            if not worker_id:
+                logger.error("No worker ID provided in request headers")
+                return jsonify({'error': 'Worker ID required'}), 400
             
             task = task_service.get_task_for_worker(worker_id)
             if not task:
@@ -95,6 +98,7 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
         except Exception as e:
             logger.error(f"Error in get-task: {e}")
             return jsonify({'error': 'Internal server error'}), 500
+
 
     @app.route('/update-task-status', methods=['POST'])
     @authenticate
@@ -201,13 +205,16 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
 
     @app.route('/worker/heartbeat', methods=['POST'])
     @authenticate
-    @validate_json('worker_id', 'task_status')
+    @validate_json('worker_id')  # Remove task_status from required fields
     def worker_heartbeat() -> tuple:
         """Update worker heartbeat and task status."""
         try:
             data = request.get_json()
             worker_id = data['worker_id']
-            task_status = data.get('task_status', {})
+            task_status = data.get('task_status', {})  # Default to empty dict if not present
+            
+            if task_status is None:  # Handle None case explicitly
+                task_status = {}
             
             db = DatabaseOperations()
             with db._get_connection() as conn:
@@ -226,7 +233,7 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
                     if not cur.fetchone():
                         return jsonify({'error': 'Worker not found'}), 404
                     
-                    if task_status.get('task_id'):
+                    if task_status and task_status.get('task_id'):
                         task_service.handle_task_progress_update(task_status)
                     
                     conn.commit()
@@ -236,7 +243,8 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
         except Exception as e:
             logger.error(f"Error updating worker heartbeat: {e}")
             return jsonify({'error': 'Heartbeat update failed'}), 500
-
+    
+    
     @app.route('/worker/disconnect', methods=['POST'])
     @authenticate
     @validate_json('worker_id')
