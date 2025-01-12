@@ -2,10 +2,13 @@
 
 from flask import Blueprint, request, jsonify, Flask
 from functools import wraps
+import json
 import logging
 from typing import Callable, Any, Dict
+from ..db.operations import DatabaseOperations
 from ..services.task_service import TaskService
 from ..config.settings import settings
+
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__)
@@ -164,6 +167,112 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
         except Exception as e:
             logger.error(f"Error retrying task: {e}")
             return jsonify({'error': 'Internal server error'}), 500
+
+    @app.route('/worker/register', methods=['POST'])
+    @authenticate
+    @validate_json('worker_id', 'capabilities')
+    def register_worker() -> tuple:
+        """Register a new worker or update existing registration."""
+        try:
+            data = request.get_json()
+            worker_id = data['worker_id']
+            capabilities = data['capabilities']
+            
+            db = DatabaseOperations()
+            with db._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO worker_status (worker_id, status, capabilities) 
+                        VALUES (%s, 'Idle', %s)
+                        ON CONFLICT (worker_id) DO UPDATE 
+                        SET status = 'Idle',
+                            last_heartbeat = NOW(),
+                            capabilities = %s
+                        RETURNING worker_id
+                    """, (worker_id, json.dumps(capabilities), json.dumps(capabilities)))
+                    conn.commit()
+            
+            logger.info(f"Worker {worker_id} registered successfully")
+            return jsonify({'status': 'registered'}), 200
+            
+        except Exception as e:
+            logger.error(f"Error registering worker: {e}")
+            return jsonify({'error': 'Registration failed'}), 500
+
+    @app.route('/worker/heartbeat', methods=['POST'])
+    @authenticate
+    @validate_json('worker_id', 'task_status')
+    def worker_heartbeat() -> tuple:
+        """Update worker heartbeat and task status."""
+        try:
+            data = request.get_json()
+            worker_id = data['worker_id']
+            task_status = data.get('task_status', {})
+            
+            db = DatabaseOperations()
+            with db._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE worker_status 
+                        SET last_heartbeat = NOW(),
+                            status = CASE 
+                                WHEN %s::jsonb ? 'task_id' THEN 'Active'
+                                ELSE 'Idle'
+                            END
+                        WHERE worker_id = %s
+                        RETURNING worker_id
+                    """, (json.dumps(task_status), worker_id))
+                    
+                    if not cur.fetchone():
+                        return jsonify({'error': 'Worker not found'}), 404
+                    
+                    if task_status.get('task_id'):
+                        task_service.handle_task_progress_update(task_status)
+                    
+                    conn.commit()
+            
+            return jsonify({'status': 'updated'}), 200
+            
+        except Exception as e:
+            logger.error(f"Error updating worker heartbeat: {e}")
+            return jsonify({'error': 'Heartbeat update failed'}), 500
+
+    @app.route('/worker/disconnect', methods=['POST'])
+    @authenticate
+    @validate_json('worker_id')
+    def disconnect_worker() -> tuple:
+        """Gracefully disconnect a worker."""
+        try:
+            data = request.get_json()
+            worker_id = data['worker_id']
+            
+            db = DatabaseOperations()
+            with db._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE worker_status 
+                        SET status = 'Disconnected',
+                            current_task_id = NULL 
+                        WHERE worker_id = %s
+                        RETURNING current_task_id
+                    """, (worker_id,))
+                    
+                    result = cur.fetchone()
+                    if not result:
+                        return jsonify({'error': 'Worker not found'}), 404
+                    
+                    if result[0]:
+                        task_service.reset_task(result[0])
+                    
+                    conn.commit()
+            
+            return jsonify({'status': 'disconnected'}), 200
+            
+        except Exception as e:
+            logger.error(f"Error disconnecting worker: {e}")
+            return jsonify({'error': 'Disconnect failed'}), 500
+
+
 
     @app.errorhandler(404)
     def not_found(e: Any) -> tuple:

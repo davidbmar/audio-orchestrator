@@ -91,6 +91,12 @@ class AudioTranscriptionOrchestrator:
                 target=self._run_status_update_processor,
                 daemon=True,
                 name="status-update-processor"
+            ),
+            # Worker cleanup thread
+            threading.Thread(
+                target=self._run_worker_cleanup,
+                daemon=True,
+                name="worker-cleanup"
             )
         ]
 
@@ -138,6 +144,16 @@ class AudioTranscriptionOrchestrator:
             except Exception as e:
                 logger.error(f"Error in status update processor: {e}")
             time.sleep(settings.POLL_INTERVAL)
+
+    def _run_worker_cleanup(self) -> None:
+        """Background thread for cleaning up disconnected workers."""
+        while True:
+            try:
+                self.task_service.cleanup_disconnected_workers()
+            except Exception as e:
+                logger.error(f"Error in worker cleanup: {e}")
+            time.sleep(60)  # Run cleanup every minute
+
 
     def run(self) -> None:
         """Main method to start the orchestrator."""
