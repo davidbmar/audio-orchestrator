@@ -126,7 +126,20 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
         store_transcription_in_s3(task_id, transcription)
 
         return jsonify({"message": "Transcription received and processed"}), 200
+   
+    # Provide API Backup for Clients Who Are Offline
+    # If a client was offline when the transcription was completed, they should be able to fetch it from S3.
+    @api.route('/task/<task_id>/transcription', methods=['GET'])
+    @authenticate
+    def get_transcription_url(task_id: str) -> tuple:
+        """Fetch a pre-signed S3 URL for the transcription."""
+        s3_url = generate_presigned_s3_url(task_id)
+        if not s3_url:
+            return jsonify({'error': 'Transcription not found'}), 404
+        
+        return jsonify({'transcription_url': s3_url}), 200
     
+
 
     @app.route('/update-task-status', methods=['POST'])
     @authenticate

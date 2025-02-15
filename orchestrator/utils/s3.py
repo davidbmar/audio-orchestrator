@@ -104,6 +104,23 @@ class S3Utils:
             logger.error(f"Error generating presigned URLs: {e}")
             raise
 
+    # Generated presigned url but this is by task_id used for getting transcriptions by task id.
+    def generate_presigned_s3_url(task_id: str) -> Optional[str]:
+        try:
+            object_key = f"transcriptions/{task_id}.txt"
+            return s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.OUTPUT_BUCKET, 'Key': object_key},
+                ExpiresIn=3600  # URL valid for 1 hour
+            )
+        except ClientError as e:
+            logger.error(f"Failed to generate presigned URL: {e}")
+            return None
+
+
+
+
+
     def normalize_and_verify_key(self, key: str) -> Optional[str]:
         """
         Normalize an S3 key and verify it exists in the input bucket.
