@@ -126,7 +126,9 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
             logging.info(f"Sent real-time update to client {task_id}")
 
         # 2️⃣ Store transcription in S3 for later access
-        s3_utils.store_transcription_in_s3(task_id, transcription)
+        s3_path = f"transcriptions/{task_id}.txt"  # Define the correct S3 path
+        s3_utils.store_transcription_in_s3(transcription, s3_path)
+
 
 
         return jsonify({"message": "Transcription received and processed"}), 200
