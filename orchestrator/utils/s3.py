@@ -117,8 +117,20 @@ class S3Utils:
             logger.error(f"Failed to generate presigned URL: {e}")
             return None
 
-
-
+    def store_transcription_in_s3(task_id: str, transcription: str) -> bool:
+        """Uploads the transcription to S3."""
+        s3 = boto3.client("s3", region_name=settings.REGION_NAME)
+        bucket_name = settings.OUTPUT_BUCKET
+        object_key = f"transcriptions/{task_id}.txt"
+    
+        try:
+            s3.put_object(Bucket=bucket_name, Key=object_key, Body=transcription.encode("utf-8"), ContentType="text/plain")
+            logger.info(f"Successfully stored transcription for task {task_id} in S3.")
+            return True
+        except ClientError as e:
+            logger.error(f"Failed to upload transcription for task {task_id}: {e}")
+            return False
+    
 
 
     def normalize_and_verify_key(self, key: str) -> Optional[str]:

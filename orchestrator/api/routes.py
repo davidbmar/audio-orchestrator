@@ -9,8 +9,11 @@ import logging
 from typing import Callable, Any, Dict
 from ..db.operations import DatabaseOperations
 from ..config.settings import settings
-from ..utils.s3_helpers import store_transcription_in_s3
-from ..main import socketio, active_clients  # Import WebSocket variables
+from ..utils.s3 import S3Utils
+from ..socket_manager import socketio, active_clients  # ✅ Fix import
+from ..services.task_service import TaskService
+s3_utils = S3Utils()  # Create an instance of S3Utils
+
 
 logger = logging.getLogger(__name__)
 task_service = TaskService()
@@ -123,7 +126,8 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
             logging.info(f"Sent real-time update to client {task_id}")
 
         # 2️⃣ Store transcription in S3 for later access
-        store_transcription_in_s3(task_id, transcription)
+        s3_utils.store_transcription_in_s3(task_id, transcription)
+
 
         return jsonify({"message": "Transcription received and processed"}), 200
    

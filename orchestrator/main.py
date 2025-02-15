@@ -10,6 +10,8 @@ from typing import Optional
 import time
 
 from .api.routes import setup_routes
+from .socket_manager import socketio, active_clients  # ✅ Import from new file
+
 from .services.task_service import TaskService
 from .services.queue_service import QueueService
 from .db.operations import DatabaseOperations
