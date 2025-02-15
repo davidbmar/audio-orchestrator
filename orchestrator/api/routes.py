@@ -1,16 +1,19 @@
 # orchestrator/api/routes.py
 
 from flask import Blueprint, request, jsonify, Flask
+from flask_socketio import emit
+
 from functools import wraps
 import json
 import logging
 from typing import Callable, Any, Dict
 from ..db.operations import DatabaseOperations
-from ..services.task_service import TaskService
 from ..config.settings import settings
-
+from ..utils.s3_helpers import store_transcription_in_s3
+from ..main import socketio, active_clients  # Import WebSocket variables
 
 logger = logging.getLogger(__name__)
+task_service = TaskService()
 api = Blueprint('api', __name__)
 
 def authenticate(f: Callable) -> Callable:
@@ -99,6 +102,31 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
             logger.error(f"Error in get-task: {e}")
             return jsonify({'error': 'Internal server error'}), 500
 
+    @app.route("/worker/transcription-result", methods=["POST"])
+    @authenticate
+    @validate_json("task_id", "transcription")
+    def receive_transcription():
+        """Receive a transcription result from a worker and forward it to the client."""
+        data = request.get_json()
+        task_id = data["task_id"]
+        transcription = data["transcription"]
+
+        logging.info(f"Received transcription for task {task_id}")
+
+        # 1️⃣ Send transcription to WebSocket clients
+        if task_id in active_clients:
+            socketio.emit(
+                "transcription_complete",
+                {"task_id": task_id, "transcription": transcription},
+                room=task_id
+            )
+            logging.info(f"Sent real-time update to client {task_id}")
+
+        # 2️⃣ Store transcription in S3 for later access
+        store_transcription_in_s3(task_id, transcription)
+
+        return jsonify({"message": "Transcription received and processed"}), 200
+    
 
     @app.route('/update-task-status', methods=['POST'])
     @authenticate
