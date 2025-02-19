@@ -1,7 +1,6 @@
 # orchestrator/api/routes.py
 
 from flask import Blueprint, request, jsonify, Flask
-from flask_socketio import emit
 
 from functools import wraps
 import json
@@ -113,23 +112,18 @@ def setup_routes(app: Flask, task_service: TaskService) -> None:
         data = request.get_json()
         task_id = data["task_id"]
         transcription = data["transcription"]
-
+    
         logging.info(f"Received transcription for task {task_id}")
-
-        # 1️⃣ Send transcription to WebSocket clients
-        if task_id in active_clients:
-            socketio.emit(
-                "transcription_complete",
-                {"task_id": task_id, "transcription": transcription},
-                room=task_id
-            )
-            logging.info(f"Sent real-time update to client {task_id}")
-
-        # 2️⃣ Store transcription in S3 for later access
-        s3_utils.store_transcription_in_s3(task_id, transcription)  # Pass correct args
-
-
+    
+        # Send transcription to WebSocket clients using new socket manager
+        socket_manager.emit_transcription_complete(task_id, transcription)
+        logging.info(f"Sent real-time update to client {task_id}")
+    
+        # Store transcription in S3 for later access
+        s3_utils.store_transcription_in_s3(task_id, transcription)
+    
         return jsonify({"message": "Transcription received and processed"}), 200
+    
    
     # Provide API Backup for Clients Who Are Offline
     # If a client was offline when the transcription was completed, they should be able to fetch it from S3.
