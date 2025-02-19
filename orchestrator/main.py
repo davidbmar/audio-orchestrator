@@ -10,7 +10,8 @@ from typing import Optional
 import time
 
 from .api.routes import setup_routes
-from .socket_manager import socketio, active_clients  # ✅ Import from new file
+from .socket_manager import socket_manager  
+
 
 from .services.task_service import TaskService
 from .services.queue_service import QueueService
@@ -156,7 +157,6 @@ class AudioTranscriptionOrchestrator:
                 logger.error(f"Error in worker cleanup: {e}")
             time.sleep(60)  # Run cleanup every minute
 
-
     def run(self) -> None:
         """Main method to start the orchestrator."""
         try:
@@ -172,9 +172,12 @@ class AudioTranscriptionOrchestrator:
             # Initialize Flask app
             self.app = self.setup_flask_app()
             
-            # Start Flask application
+            # Initialize SocketIO with the app
+            socket_manager.init_app(self.app)
+            
+            # Start Flask application with SocketIO
             logger.info("Starting Flask application on port 6000")
-            socketio.run(self.app, host='0.0.0.0', port=6000)  
+            socket_manager.socketio.run(self.app, host='0.0.0.0', port=6000)
             
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt. Shutting down...")
@@ -182,6 +185,7 @@ class AudioTranscriptionOrchestrator:
             logger.critical("Critical error: %s", str(e))
             logger.critical(traceback.format_exc())
             sys.exit(1)
+
 
 def main():
     orchestrator = AudioTranscriptionOrchestrator()

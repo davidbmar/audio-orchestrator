@@ -10,7 +10,7 @@ from typing import Callable, Any, Dict
 from ..db.operations import DatabaseOperations
 from ..config.settings import settings
 from ..utils.s3 import S3Utils
-from ..socket_manager import socketio, active_clients  # ✅ Fix import
+from ..socket_manager import socket_manager
 from ..services.task_service import TaskService
 s3_utils = S3Utils()  # Create an instance of S3Utils
 
