@@ -30,3 +30,13 @@ def handle_transcription_complete(task_id, transcription):
         'transcription': transcription
     }, room=task_id)
 
+@socketio.on('test_transcription_request')
+def handle_test_request(data):
+    """Handle test transcription request"""
+    logger.info("Received test transcription request")
+    # Simulate a transcription result
+    socketio.emit('test_transcription', {
+        'task_id': 'test-123',
+        'transcription': 'This is a test transcription message.'
+    })
+
