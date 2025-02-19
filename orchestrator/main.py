@@ -70,19 +70,22 @@ class AudioTranscriptionOrchestrator:
 
     # In your orchestrator/main.py
     from flask_cors import CORS
-    
+
     def setup_flask_app(self) -> Flask:
         app = Flask(__name__)
         CORS(app, resources={
             r"/*": {
-                "origins": "*",  # In production, specify your domain
+                "origins": ["https://www.davidbmar.com"],
                 "allow_headers": ["Content-Type", "Authorization"],
                 "methods": ["GET", "POST", "OPTIONS"]
             }
         })
+        
+        # Initialize SocketIO with CORS settings
+        socketio.init_app(app, cors_allowed_origins=["https://www.davidbmar.com"])
+        
         setup_routes(app, self.task_service)
         return app
-
 
     def start_background_threads(self) -> None:
         """Start all background processing threads."""
