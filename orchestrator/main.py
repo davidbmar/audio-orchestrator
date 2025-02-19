@@ -174,7 +174,7 @@ class AudioTranscriptionOrchestrator:
             
             # Start Flask application
             logger.info("Starting Flask application on port 6000")
-            socketio.app.run(self.app, host='0.0.0.0', port=6000)
+            socketio.run(self.app, host='0.0.0.0', port=6000)  
             
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt. Shutting down...")
