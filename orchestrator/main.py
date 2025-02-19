@@ -11,12 +11,12 @@ import time
 
 from .api.routes import setup_routes
 from .socket_manager import socket_manager  
-
-
 from .services.task_service import TaskService
 from .services.queue_service import QueueService
 from .db.operations import DatabaseOperations
 from .config.settings import settings
+from flask_cors import CORS
+
 
 # Initialize logging
 logging.basicConfig(
@@ -68,11 +68,21 @@ class AudioTranscriptionOrchestrator:
             logger.error(f"Database initialization failed: {str(e)}")
             raise
 
+    # In your orchestrator/main.py
+    from flask_cors import CORS
+    
     def setup_flask_app(self) -> Flask:
-        """Initialize and configure Flask application."""
         app = Flask(__name__)
+        CORS(app, resources={
+            r"/*": {
+                "origins": "*",  # In production, specify your domain
+                "allow_headers": ["Content-Type", "Authorization"],
+                "methods": ["GET", "POST", "OPTIONS"]
+            }
+        })
         setup_routes(app, self.task_service)
         return app
+
 
     def start_background_threads(self) -> None:
         """Start all background processing threads."""
