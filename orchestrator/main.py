@@ -11,6 +11,7 @@ import time
 
 from .api.routes import setup_routes
 from .socket_manager import socket_manager  
+
 from .services.task_service import TaskService
 from .services.queue_service import QueueService
 from .db.operations import DatabaseOperations
@@ -81,8 +82,8 @@ class AudioTranscriptionOrchestrator:
             }
         })
         
-        # Initialize SocketIO with CORS settings
-        socketio.init_app(app, cors_allowed_origins=["https://www.davidbmar.com"])
+        # Initialize the socket manager with the app
+        socket_manager.init_app(app)
         
         setup_routes(app, self.task_service)
         return app
@@ -184,14 +185,12 @@ class AudioTranscriptionOrchestrator:
             
             # Initialize Flask app
             self.app = self.setup_flask_app()
-            
-            # Initialize SocketIO with the app
-            socket_manager.init_app(self.app)
-            
+      
             # Start Flask application with SocketIO
             logger.info("Starting Flask application on port 6000")
             socket_manager.socketio.run(self.app, host='0.0.0.0', port=6000)
             
+
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt. Shutting down...")
         except Exception as e:
