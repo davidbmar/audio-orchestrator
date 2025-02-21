@@ -1,4 +1,5 @@
-from flask_socketio import SocketIO, emit, join_room, disconnect, request
+from flask_socketio import SocketIO, emit, join_room, disconnect
+from flask import request  # Correct import for request context
 
 import logging
 import uuid
