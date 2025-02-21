@@ -16,9 +16,14 @@ class SocketManager:
         # [BACKEND] Generate UUID when the client connects (in socket_manager.py).
         @self.socketio.on('connect')
         def handle_connect():
-            """Handle client connection and send UUID"""
-            new_uuid = str(uuid.uuid4())  # Generate a UUID
-            logger.info(f"Client connected. Generated UUID: {new_uuid}")
+            """Handle client connection and assign a UUID"""
+            new_uuid = str(uuid.uuid4())
+            client_session_id = request.sid  # Unique session ID for each connection
+        
+            # Store UUID associated with this client
+            self.active_clients[client_session_id] = new_uuid
+            logger.info(f"Client connected: {client_session_id} | UUID: {new_uuid}")
+        
             emit('connection_response', {'status': 'connected', 'uuid': new_uuid})
 
         @self.socketio.on('register_for_updates')
