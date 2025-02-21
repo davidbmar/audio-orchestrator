@@ -1,4 +1,5 @@
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit, join_room, disconnect, request
+
 import logging
 import uuid
 
@@ -15,7 +16,7 @@ class SocketManager:
         # handle_connect function 
         # [BACKEND] Generate UUID when the client connects (in socket_manager.py).
         @self.socketio.on('connect')
-        def handle_connect():
+        def handle_connect(auth):
             """Handle client connection and assign a UUID"""
             new_uuid = str(uuid.uuid4())
             client_session_id = request.sid  # Unique session ID for each connection
@@ -25,7 +26,7 @@ class SocketManager:
             logger.info(f"Client connected: {client_session_id} | UUID: {new_uuid}")
         
             emit('connection_response', {'status': 'connected', 'uuid': new_uuid})
-
+        
         @self.socketio.on('register_for_updates')
         def handle_registration(data):
             """Register client for updates about specific tasks"""
