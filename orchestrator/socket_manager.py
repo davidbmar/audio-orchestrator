@@ -1,5 +1,6 @@
 from flask_socketio import SocketIO, emit, join_room
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -10,12 +11,15 @@ class SocketManager:
 
     def init_app(self, app):
         self.socketio = SocketIO(app, cors_allowed_origins="*")
-        
+       
+        # handle_connect function 
+        # [BACKEND] Generate UUID when the client connects (in socket_manager.py).
         @self.socketio.on('connect')
         def handle_connect():
-            """Handle client connection"""
-            logger.info("Client connected")
-            emit('connection_response', {'status': 'connected'})
+            """Handle client connection and send UUID"""
+            new_uuid = str(uuid.uuid4())  # Generate a UUID
+            logger.info(f"Client connected. Generated UUID: {new_uuid}")
+            emit('connection_response', {'status': 'connected', 'uuid': new_uuid})
 
         @self.socketio.on('register_for_updates')
         def handle_registration(data):
