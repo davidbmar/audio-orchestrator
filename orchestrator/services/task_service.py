@@ -17,42 +17,30 @@ class TaskService:
         self.queue_service = QueueService()
         self.s3_utils = S3Utils()
 
-    def process_s3_event(self, event: Dict[str, Any]) -> None:
-        """
-        Process an S3 event and create a task.
-        
-        Args:
-            event (Dict[str, Any]): The S3 event data
-        """
-        try:
-            for record in event.get('Records', []):
-                if not record.get('eventName', '').startswith('ObjectCreated:'):
-                    continue
-                    
-                bucket = record['s3']['bucket']['name']
-                encoded_key = record['s3']['object']['key']
-                
-                # Verify this is a new file we should process
-                if not self._should_process_file(bucket, encoded_key):
-                    logger.info(f"Skipping file {encoded_key} - does not meet processing criteria")
-                    continue
+    def process_s3_event(self, event: dict) -> None:
+	try:
+	    for record in event.get('Records', []):
+		if not record.get('eventName', '').startswith('ObjectCreated:'):
+		    continue
 
-                # Generate task ID and create task
-                task_id = str(uuid.uuid4())
-                
-                # Normalize and verify the S3 key
-                normalized_key = self.s3_utils.normalize_and_verify_key(encoded_key)
-                if not normalized_key:
-                    logger.error(f"Could not verify existence of key: {encoded_key}")
-                    return
+		bucket = record['s3']['bucket']['name']
+		encoded_key = record['s3']['object']['key']
+		logger.info(f"Received S3 event for key: {encoded_key}")
 
-                # Create the task in database
-                self.db.create_task(task_id, normalized_key)
-                logger.info(f"Created task {task_id} for object {normalized_key}")
+		# Normalize and verify the key using S3Utils
+		normalized_key = self.s3_utils.normalize_and_verify_key(encoded_key)
+		if not normalized_key:
+		    logger.error(f"Could not verify existence of key: {encoded_key}")
+		    return
 
-        except Exception as e:
-            logger.error(f"Error processing S3 event: {e}")
-            raise
+		# Use the normalized key as the task identifier
+		task_id = normalized_key
+		self.db.create_task(task_id, normalized_key)
+		logger.info(f"Created task {task_id} for object {normalized_key}")
+	except Exception as e:
+	    logger.error(f"Error processing S3 event: {e}")
+	    raise
+
 
     def _should_process_file(self, bucket: str, key: str) -> bool:
         """
